@@ -10,6 +10,7 @@ A browser-only engineering workbench for designing a 2026-style Formula 1 car:
 | **Wind Tunnel** | Real-time 2-D lattice-Boltzmann flow solve of a wing section. Drag an element to move it, drag the orange trailing-edge handle (or scroll) to change its angle, and watch the flow field and per-element forces update. Edits write straight back into the design. |
 | **Aero Simulation** | Whole-car aero map with atmosphere controls (temperature, pressure or ISA elevation, humidity, wind, circuit presets), speed / ride-height / flap-angle sweeps, Reynolds and Mach numbers, X-mode vs Z-mode. |
 | **Parts Designer** | Create new parts (wing elements, winglets, endplates, floor fences, diffuser strakes) from NACA 4-digit or custom profiles, preview in 3D, check the bodywork envelope, mount on the car, test in the tunnel. |
+| **Library & Track Advisor** | Save whole front wings, rear wings, floors, sidepod/cooling packages and ride-height setups as named components (plus the parts library). Pick a circuit and the weather, and the advisor lap-simulates every combination to rank which components suit it, shows a front × rear wing pairing matrix, lap-time sensitivities, a speed trace, and a suitability map across all circuits. One click fits the best legal combination. |
 
 Everything runs client-side (React + TypeScript + Three.js + Zustand). Designs and the parts library persist in `localStorage`.
 
@@ -47,6 +48,13 @@ It is an aero *map* for trade-off studies, not CFD: trends are the reliable part
 * The section is cut at a chosen lateral station so sweep, dihedral and taper are honoured; the ground sits at the current ride height.
 * Fields: speed, pressure coefficient, vorticity. Overlays: tracer particles, streamlines.
 
+### Component library and track advisor (`src/sim/circuits.ts`, `src/sim/lapsim.ts`, `src/sim/advisor.ts`)
+* **Components** are snapshots of a subsystem of the car: front wing, rear wing, floor & diffuser, sidepods & cooling, ride height & balance. Save them from the 3D Model tab or the library page, fit them back with one click, export/import the library as JSON. A starter set (low-drag / medium / high-load wings, three floors, three cooling packages, three setups) is seeded on first use.
+* **Circuits** are representative loops of straights and constant-radius corners for twelve tracks (Monza, Monaco, Silverstone, Spa, Mexico City, Singapore, Bahrain, Interlagos, Red Bull Ring, Suzuka, Jeddah, Barcelona), with elevation, typical weather, surface grip, a bump-driven minimum ride height and the 2026 X-mode zones. Straights are scaled so each loop matches the official lap distance.
+* **Weather** sets air density (temperature, humidity, ISA pressure at the circuit elevation or an override), tyre grip (dry / damp / wet and track temperature) and cooling demand (hot or thin air needs bigger inlets or the engine is derated).
+* **Lap simulation** is a quasi-steady point-mass model: corner speeds from the friction circle with downforce-dependent normal load and tyre load sensitivity, acceleration limited by traction and the 2026 power unit (400 kW ICE + 350 kW MGU-K with a high-speed deployment taper), Z-mode aero in corners and X-mode aero after the activation point of each designated zone, an aero-balance window (43–48.5 % front) outside which grip is penalised, and a plank-wear penalty for running below the ride height a bumpy surface needs.
+* **Advisor** evaluates every component swapped in on its own (with reasons: drag vs top speed, downforce vs corner speed, balance, cooling, bumps), every front × rear wing pair, a full-factorial search for the quickest legal combination, sensitivities (seconds per 1 % downforce, 1 % drag, 10 kg, 1 % grip), and a circuit-by-circuit suitability map. Lap times are indicative (the 2025 reference laps are shown for context; 2026 cars are expected to be slower); the deltas between components are the useful output.
+
 ### Regulations (`src/regulations/`)
 `regs2026.ts` holds the article digest. Every limit carries a `status`:
 
@@ -69,7 +77,8 @@ FIA convention throughout: `x` rearward from the front-axle centre line, `y` lat
 src/
   model/        types + default car, NACA/airfoil math, Three.js geometry builders, exporters
   regulations/  2026 digest and compliance engine
-  sim/          atmosphere, whole-car aero map, lattice-Boltzmann solver, colour maps
+  sim/          atmosphere, whole-car aero map, lattice-Boltzmann solver, colour maps,
+                circuit profiles + weather, lap simulator, track advisor
   store/        zustand store (design, atmosphere, parts library, tunnel settings)
   ui/           pages and shared components
 ```

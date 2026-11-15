@@ -7,7 +7,7 @@ import { buildCarMeshes, type CarMeshes } from '../../model/geometry'
 import { exportGLB, exportOBJ, exportSTL, exportJSON } from '../../model/exporters'
 import { Panel, Slider, Toggle } from '../components/controls'
 import { ElementEditor } from '../components/ElementEditor'
-import type { CarDesign } from '../../model/types'
+import { COMPONENT_KIND_LABEL, type CarDesign, type ComponentKind } from '../../model/types'
 
 type Section = 'chassis' | 'frontWing' | 'rearWing' | 'floor' | 'body' | 'mass' | 'export'
 
@@ -81,6 +81,22 @@ function CarScene({ car, selected, onSelect, view }: { car: CarDesign; selected:
         </mesh>
       ))}
     </group>
+  )
+}
+
+function SaveComponentButton({ kind }: { kind: ComponentKind }) {
+  const saveComponent = useAppStore((s) => s.saveComponent)
+  return (
+    <button
+      className="btn small"
+      title={`Save the current ${COMPONENT_KIND_LABEL[kind].toLowerCase()} to the component library`}
+      onClick={() => {
+        const name = window.prompt(`Name for this ${COMPONENT_KIND_LABEL[kind].toLowerCase()} component:`)
+        if (name) saveComponent(kind, name.trim())
+      }}
+    >
+      Save to library
+    </button>
   )
 }
 
@@ -181,7 +197,7 @@ export function ModelPage() {
           </div>
 
           {(section === 'frontWing' || section === 'rearWing') && (
-            <Panel title={`${section === 'frontWing' ? 'Front' : 'Rear'} wing elements`} right={<button className="btn small" onClick={() => addElement(wingKey)} disabled={wing.elements.length >= 3}>+ element</button>}>
+            <Panel title={`${section === 'frontWing' ? 'Front' : 'Rear'} wing elements`} right={<span className="row"><SaveComponentButton kind={wingKey} /><button className="btn small" onClick={() => addElement(wingKey)} disabled={wing.elements.length >= 3}>+ element</button></span>}>
               <div className="list" style={{ marginBottom: 10 }}>
                 {wing.elements.map((e, i) => (
                   <div key={e.id} className={`item row ${selectedEl?.id === e.id ? 'selected' : ''}`} style={{ justifyContent: 'space-between' }} onClick={() => setSelected(e.id)}>
@@ -207,7 +223,7 @@ export function ModelPage() {
           )}
 
           {section === 'chassis' && (
-            <Panel title="Chassis">
+            <Panel title="Chassis" right={<SaveComponentButton kind="setup" />}>
               <Slider label="Wheelbase" value={c.wheelbase} min={2800} max={3700} step={5} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, chassis: { ...cc.chassis, wheelbase: v } }))} />
               <Slider label="Front track" value={c.frontTrack} min={1300} max={1700} step={5} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, chassis: { ...cc.chassis, frontTrack: v } }))} />
               <Slider label="Rear track" value={c.rearTrack} min={1300} max={1700} step={5} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, chassis: { ...cc.chassis, rearTrack: v } }))} />
@@ -221,7 +237,7 @@ export function ModelPage() {
           )}
 
           {section === 'floor' && (
-            <Panel title="Floor and diffuser">
+            <Panel title="Floor and diffuser" right={<SaveComponentButton kind="floor" />}>
               <Slider label="Floor start x" value={f.startX} min={200} max={900} step={10} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, floor: { ...cc.floor, startX: v } }))} />
               <Slider label="Floor length" value={f.length} min={2000} max={3800} step={10} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, floor: { ...cc.floor, length: v } }))} />
               <Slider label="Floor width" value={f.width} min={1000} max={1700} step={10} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, floor: { ...cc.floor, width: v } }))} />
@@ -235,7 +251,7 @@ export function ModelPage() {
           )}
 
           {section === 'body' && (
-            <Panel title="Sidepods and cooling">
+            <Panel title="Sidepods and cooling" right={<SaveComponentButton kind="sidepod" />}>
               <Slider label="Sidepod start x" value={sp.startX} min={800} max={1800} step={10} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, sidepod: { ...cc.sidepod, startX: v } }))} />
               <Slider label="Sidepod length" value={sp.length} min={1000} max={2600} step={10} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, sidepod: { ...cc.sidepod, length: v } }))} />
               <Slider label="Sidepod width" value={sp.width} min={250} max={700} step={5} unit="mm" onChange={(v) => setCar((cc) => ({ ...cc, sidepod: { ...cc.sidepod, width: v } }))} />

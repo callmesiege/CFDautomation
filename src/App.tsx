@@ -8,6 +8,7 @@ import { ModelPage } from './ui/pages/ModelPage'
 import { WindTunnelPage } from './ui/pages/WindTunnelPage'
 import { AeroPage } from './ui/pages/AeroPage'
 import { PartsPage } from './ui/pages/PartsPage'
+import { LibraryPage } from './ui/pages/LibraryPage'
 
 const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z' },
@@ -16,6 +17,7 @@ const NAV: { id: Tab; label: string; icon: string }[] = [
   { id: 'tunnel', label: 'Wind Tunnel', icon: 'M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h9a2 2 0 1 1-2 2' },
   { id: 'aero', label: 'Aero Simulation', icon: 'M3 17l5-6 4 3 4-7 5 4M3 21h18' },
   { id: 'parts', label: 'Parts Designer', icon: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4L15 12l-3-3 2.7-2.7z' },
+  { id: 'library', label: 'Library & Track Advisor', icon: 'M4 4h6v16H4zM14 4h6v7h-6zM14 13h6v7h-6z' },
 ]
 
 export default function App() {
@@ -69,6 +71,7 @@ export default function App() {
         {tab === 'tunnel' && <WindTunnelPage />}
         {tab === 'aero' && <AeroPage />}
         {tab === 'parts' && <PartsPage />}
+        {tab === 'library' && <LibraryPage />}
       </main>
     </div>
   )

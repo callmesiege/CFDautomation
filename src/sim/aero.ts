@@ -104,7 +104,7 @@ function wingLoads(name: string, elements: WingElement[], mode: 'Z' | 'X', q: nu
     const cf = 0.074 / Math.pow(Math.max(1e5, Re * 60), 0.2) // profile drag from flat-plate skin friction at ~60 m/s
     const cd0 = 2 * cf * (1 + 2 * (el.profile.kind === 'naca4' ? el.profile.t / 100 : 0.1)) + (stalled ? 0.08 : 0.004 * Math.abs(angle) / 10)
     // Oswald efficiency: endplates and the slot system make an F1 wing far more efficient than its geometric AR suggests
-    const e = 1.1 * endplateFactor
+    const e = 0.9 * endplateFactor
     const cdi = (cl3d * cl3d) / (Math.PI * e * AR)
     cdA += (cd0 + cdi) * area
     clA += clAEl

@@ -331,3 +331,138 @@ export function defaultCar(): CarDesign {
     parts: [],
   }
 }
+
+// ---------------------------------------------------------------------------
+// Component library
+// ---------------------------------------------------------------------------
+
+export type ComponentKind = 'frontWing' | 'rearWing' | 'floor' | 'sidepod' | 'setup'
+
+export interface SetupData {
+  rideHeightFront: number
+  rideHeightRear: number
+  frontBalance: number
+}
+
+export type ComponentData = FrontWing | RearWing | FloorSpec | Sidepod | SetupData
+
+export interface SavedComponent {
+  id: string
+  kind: ComponentKind
+  name: string
+  notes: string
+  tags: string[]
+  createdAt: number
+  data: ComponentData
+}
+
+export const COMPONENT_KIND_LABEL: Record<ComponentKind, string> = {
+  frontWing: 'Front wing',
+  rearWing: 'Rear wing',
+  floor: 'Floor & diffuser',
+  sidepod: 'Sidepods & cooling',
+  setup: 'Ride height & balance',
+}
+
+export function extractComponent(car: CarDesign, kind: ComponentKind): ComponentData {
+  switch (kind) {
+    case 'frontWing':
+      return JSON.parse(JSON.stringify(car.frontWing))
+    case 'rearWing':
+      return JSON.parse(JSON.stringify(car.rearWing))
+    case 'floor':
+      return { ...car.floor }
+    case 'sidepod':
+      return { ...car.sidepod }
+    case 'setup':
+      return { rideHeightFront: car.chassis.rideHeightFront, rideHeightRear: car.chassis.rideHeightRear, frontBalance: car.mass.frontBalance }
+  }
+}
+
+export function applyComponentData(car: CarDesign, kind: ComponentKind, data: ComponentData): CarDesign {
+  switch (kind) {
+    case 'frontWing':
+      return { ...car, frontWing: JSON.parse(JSON.stringify(data)) as FrontWing }
+    case 'rearWing':
+      return { ...car, rearWing: JSON.parse(JSON.stringify(data)) as RearWing }
+    case 'floor':
+      return { ...car, floor: { ...(data as FloorSpec) } }
+    case 'sidepod':
+      return { ...car, sidepod: { ...(data as Sidepod) } }
+    case 'setup': {
+      const s = data as SetupData
+      return { ...car, chassis: { ...car.chassis, rideHeightFront: s.rideHeightFront, rideHeightRear: s.rideHeightRear }, mass: { ...car.mass, frontBalance: s.frontBalance } }
+    }
+  }
+}
+
+/** One-line description of a component for lists. */
+export function describeComponent(c: SavedComponent): string {
+  switch (c.kind) {
+    case 'frontWing':
+    case 'rearWing': {
+      const w = c.data as FrontWing
+      return `${w.elements.length} elements · angles ${w.elements.map((e) => e.angle.toFixed(0)).join('/')}° · chords ${w.elements.map((e) => e.chord).join('/')} mm`
+    }
+    case 'floor': {
+      const f = c.data as FloorSpec
+      return `${f.width} mm wide · diffuser ${f.diffuserAngle}° to ${f.diffuserExitHeight} mm · edge ${f.edgeHeight} mm`
+    }
+    case 'sidepod': {
+      const s = c.data as Sidepod
+      return `inlet ${(s.inletArea / 1000).toFixed(0)}k mm² · ${s.length} × ${s.width} × ${s.height} mm · undercut ${s.undercut} mm`
+    }
+    case 'setup': {
+      const s = c.data as SetupData
+      return `ride height ${s.rideHeightFront}/${s.rideHeightRear} mm · ${s.frontBalance.toFixed(1)} % front`
+    }
+  }
+}
+
+/** A starter set of components derived from the baseline car so the advisor has alternatives to compare. */
+export function starterComponents(): SavedComponent[] {
+  const base = defaultCar()
+  const t = Date.now()
+  const mk = (kind: ComponentKind, name: string, notes: string, tags: string[], data: ComponentData, i: number): SavedComponent => ({ id: `starter-${kind}-${i}`, kind, name, notes, tags, createdAt: t - i, data })
+  const fw = (angles: [number, number, number], xAngles: [number, number], chordScale: number, zShift = 0): FrontWing => ({
+    ...JSON.parse(JSON.stringify(base.frontWing)),
+    elements: base.frontWing.elements.map((e, i) => ({
+      ...e,
+      id: `${e.id}-${angles.join('')}`,
+      angle: angles[i],
+      xModeAngle: i === 0 ? e.xModeAngle : xAngles[i - 1],
+      chord: Math.round(e.chord * (i === 0 ? 1 : chordScale)),
+      tipChord: Math.round(e.tipChord * (i === 0 ? 1 : chordScale)),
+      z: e.z + (i === 0 ? 0 : zShift * i),
+    })),
+  })
+  const rw = (angles: [number, number, number], xAngles: [number, number], chordScale: number, zShift: number): RearWing => ({
+    ...JSON.parse(JSON.stringify(base.rearWing)),
+    elements: base.rearWing.elements.map((e, i) => ({
+      ...e,
+      id: `${e.id}-${angles.join('')}`,
+      angle: angles[i],
+      xModeAngle: i === 0 ? e.xModeAngle : xAngles[i - 1],
+      chord: Math.round(e.chord * chordScale),
+      tipChord: Math.round(e.tipChord * chordScale),
+      z: e.z + zShift * i,
+    })),
+  })
+  return [
+    mk('frontWing', 'FW-A low drag', 'Flat flaps for Monza-type circuits.', ['low drag'], fw([3, 8, 16], [0, 2], 0.9), 1),
+    mk('frontWing', 'FW-B balanced', 'Baseline front wing.', ['medium'], fw([4, 14, 26], [2, 4], 1), 2),
+    mk('frontWing', 'FW-C high load', 'Steep flaps and longer chords for street circuits.', ['high downforce'], fw([5, 18, 30], [3, 6], 1.1, -12), 3),
+    mk('rearWing', 'RW-A Monza', 'Skinny rear wing: small chords, shallow angles.', ['low drag'], rw([5, 10, 15], [1, 2], 0.82, -10), 1),
+    mk('rearWing', 'RW-B medium', 'Baseline rear wing.', ['medium'], rw([8, 20, 30], [3, 5], 1, 0), 2),
+    mk('rearWing', 'RW-C max load', 'Big-chord, high-angle wing for Monaco, Singapore, Hungary.', ['high downforce'], rw([11, 23, 32], [4, 7], 1.1, -6), 3),
+    mk('floor', 'Floor std', 'Baseline floor.', ['medium'], { ...base.floor }, 1),
+    mk('floor', 'Floor aggressive diffuser', 'Steeper, longer diffuser; more load, drag and ride-height sensitivity.', ['high downforce'], { ...base.floor, diffuserAngle: 13, diffuserLength: 1150, diffuserExitHeight: 330 }, 2),
+    mk('floor', 'Floor low drag', 'Shallow diffuser and reduced tunnel inlet for low-drag circuits.', ['low drag'], { ...base.floor, diffuserAngle: 8, diffuserLength: 900, tunnelInletHeight: 100 }, 3),
+    mk('sidepod', 'Cooling compact', 'Smallest inlets: cool climates and low-drag tracks.', ['low drag', 'cool'], { ...base.sidepod, inletArea: 40000, width: 500 }, 1),
+    mk('sidepod', 'Cooling standard', 'Baseline sidepods.', ['medium'], { ...base.sidepod }, 2),
+    mk('sidepod', 'Cooling hot climate', 'Enlarged inlets for Singapore, Bahrain, Mexico altitude.', ['hot', 'altitude'], { ...base.sidepod, inletArea: 64000, width: 560 }, 3),
+    mk('setup', 'Setup low', 'Lowest safe ride heights for smooth circuits.', ['smooth'], { rideHeightFront: 24, rideHeightRear: 48, frontBalance: 45.8 }, 1),
+    mk('setup', 'Setup standard', 'Baseline ride heights.', ['medium'], { rideHeightFront: 30, rideHeightRear: 60, frontBalance: 45.8 }, 2),
+    mk('setup', 'Setup raised (bumpy)', 'Raised for street circuits and kerbs.', ['bumpy', 'street'], { rideHeightFront: 38, rideHeightRear: 72, frontBalance: 46.2 }, 3),
+  ]
+}

@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { defaultCar, makeElement, uid, type CarDesign, type CustomPart, type WingElement } from '../model/types'
+import { applyComponentData, defaultCar, extractComponent, makeElement, starterComponents, uid, type CarDesign, type ComponentKind, type CustomPart, type SavedComponent, type WingElement } from '../model/types'
+import type { Weather } from '../sim/circuits'
 import { defaultAtmosphere, type Atmosphere } from '../sim/atmosphere'
 
-export type Tab = 'dashboard' | 'regulations' | 'model' | 'tunnel' | 'aero' | 'parts'
+export type Tab = 'dashboard' | 'regulations' | 'model' | 'tunnel' | 'aero' | 'parts' | 'library'
 
 export type WingKey = 'frontWing' | 'rearWing'
 
@@ -18,6 +19,11 @@ export interface TunnelSettings {
   streamlines: boolean
   rollingRoad: boolean
   stepsPerFrame: number
+}
+
+export interface AdvisorSettings {
+  circuitId: string
+  weather: Weather | null
 }
 
 export interface SavedDesign {
@@ -36,6 +42,18 @@ interface AppState {
   savedDesigns: SavedDesign[]
   tunnel: TunnelSettings
   setTunnel: (patch: Partial<TunnelSettings>) => void
+  components: SavedComponent[]
+  componentsSeeded: boolean
+  advisor: AdvisorSettings
+  setAdvisor: (patch: Partial<AdvisorSettings>) => void
+  saveComponent: (kind: ComponentKind, name: string, notes?: string, tags?: string[]) => SavedComponent
+  updateComponent: (id: string, patch: Partial<Pick<SavedComponent, 'name' | 'notes' | 'tags'>>) => void
+  overwriteComponent: (id: string) => void
+  applyComponent: (id: string) => void
+  deleteComponent: (id: string) => void
+  duplicateComponent: (id: string) => void
+  importComponents: (items: SavedComponent[]) => void
+  seedStarterComponents: () => void
   setTab: (t: Tab) => void
   setCar: (fn: (c: CarDesign) => CarDesign) => void
   updateCar: (patch: Partial<CarDesign>) => void
@@ -68,6 +86,36 @@ export const useAppStore = create<AppState>()(
       savedDesigns: [],
       tunnel: { mode: 'frontWing', partId: null, station: 520, reCap: 3000, field: 'speed', particles: true, streamlines: false, rollingRoad: true, stepsPerFrame: 4 },
       setTunnel: (patch) => set({ tunnel: { ...get().tunnel, ...patch } }),
+      components: [],
+      componentsSeeded: false,
+      advisor: { circuitId: 'monza', weather: null },
+      setAdvisor: (patch) => set({ advisor: { ...get().advisor, ...patch } }),
+      saveComponent: (kind, name, notes = '', tags = []) => {
+        const comp: SavedComponent = { id: uid('cmp'), kind, name, notes, tags, createdAt: Date.now(), data: extractComponent(get().car, kind) }
+        set({ components: [comp, ...get().components] })
+        return comp
+      },
+      updateComponent: (id, patch) => set({ components: get().components.map((c) => (c.id === id ? { ...c, ...patch } : c)) }),
+      overwriteComponent: (id) =>
+        set({ components: get().components.map((c) => (c.id === id ? { ...c, data: extractComponent(get().car, c.kind) } : c)) }),
+      applyComponent: (id) => {
+        const c = get().components.find((x) => x.id === id)
+        if (c) set({ car: applyComponentData(get().car, c.kind, c.data) })
+      },
+      deleteComponent: (id) => set({ components: get().components.filter((c) => c.id !== id) }),
+      duplicateComponent: (id) => {
+        const c = get().components.find((x) => x.id === id)
+        if (c) set({ components: [{ ...JSON.parse(JSON.stringify(c)), id: uid('cmp'), name: `${c.name} (copy)`, createdAt: Date.now() }, ...get().components] })
+      },
+      importComponents: (items) => {
+        const existing = new Set(get().components.map((c) => c.id))
+        const fresh = items.filter((i) => i && i.kind && i.data && !existing.has(i.id)).map((i) => ({ ...i, id: i.id || uid('cmp') }))
+        set({ components: [...fresh, ...get().components] })
+      },
+      seedStarterComponents: () => {
+        const existing = new Set(get().components.map((c) => c.id))
+        set({ components: [...get().components, ...starterComponents().filter((c) => !existing.has(c.id))], componentsSeeded: true })
+      },
       setTab: (tab) => set({ tab }),
       setCar: (fn) => set({ car: fn(get().car) }),
       updateCar: (patch) => set({ car: { ...get().car, ...patch } }),
@@ -135,6 +183,6 @@ export const useAppStore = create<AppState>()(
       importCar: (car) => set({ car }),
       resetCar: () => set({ car: defaultCar() }),
     }),
-    { name: 'apex-studio-v1', version: 1 },
+    { name: 'apex-studio-v1', version: 2 },
   ),
 )
