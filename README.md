@@ -25,13 +25,17 @@ npm run preview    # serve the production bundle
 
 ## Deploying to GitHub Pages
 
-The app is static (no server, no API, designs live in the browser's `localStorage`), so it deploys as a project page:
+The app is static (no server, no API, designs live in the browser's `localStorage`), so it deploys as a project page from a branch:
 
-1. In the repository settings open **Pages** and set **Source** to **GitHub Actions**.
-2. Merge to `main` (or run the workflow manually from the Actions tab). `.github/workflows/deploy-pages.yml` builds with `VITE_BASE=/<repo>/` and publishes `dist/`.
-3. The site appears at `https://<user>.github.io/<repo>/`.
+1. In the repository settings open **Pages**, set **Source** to **Deploy from a branch**, and choose the `gh-pages` branch, folder `/ (root)`.
+2. Publish a build with
+   ```bash
+   npm run deploy
+   ```
+   This runs `vite build --mode pages` (asset URLs prefixed with `/CFDautomation/`) and pushes `dist/` to the `gh-pages` branch.
+3. The site appears at `https://<user>.github.io/CFDautomation/` a minute or so later. Re-run `npm run deploy` whenever you want to publish a new version.
 
-For any other static host build with `VITE_BASE=/` (the default) and upload `dist/`.
+If the repository is renamed, build with `VITE_BASE=/<new-name>/`. For any other static host build with `npm run build` (base `/`) and upload `dist/`.
 
 ## How the physics works
 
