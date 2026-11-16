@@ -23,6 +23,16 @@ npm run build      # production bundle in dist/
 npm run preview    # serve the production bundle
 ```
 
+## Deploying to GitHub Pages
+
+The app is static (no server, no API, designs live in the browser's `localStorage`), so it deploys as a project page:
+
+1. In the repository settings open **Pages** and set **Source** to **GitHub Actions**.
+2. Merge to `main` (or run the workflow manually from the Actions tab). `.github/workflows/deploy-pages.yml` builds with `VITE_BASE=/<repo>/` and publishes `dist/`.
+3. The site appears at `https://<user>.github.io/<repo>/`.
+
+For any other static host build with `VITE_BASE=/` (the default) and upload `dist/`.
+
 ## How the physics works
 
 ### Atmosphere (`src/sim/atmosphere.ts`)
